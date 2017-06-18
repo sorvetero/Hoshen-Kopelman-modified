@@ -1,2 +1,247 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+#include <iostream> //entrada e saida de dados
+#include <stdlib.h> //comandos padrão do c...
+#include <time.h> //gera a semente para o RAND
+#include <assert.h>
+#include <stdio.h>
+#include <fstream> //biblioteca de exportação de dados para arquivo
+#include <random>
+
+using namespace std;
+const int L_max=100, L_min=100, ip_max=15, iteracoes=1000;
+const int Li_max=L_max, Lj_max=L_max, ivv=(Li_max*Lj_max)/2;
+const float pi=0.58, pf=0.62;
+const int num_red=L_max/L_min;
+float p_incremento=(pf-pi)/ip_max;
+
+int i, j, ip, Li, Lj,L=L_min,k=num_red;
+int cont, cont_it,esquerda, acima, menor, dimensao;
+int acima_sit, esquerda_sit;
+float numerador, denominador, ran, p, po;
+int cluster[Li_max][Lj_max], n[ivv];
+float perc[num_red][ip_max], iperc;
+//*********************************************************************************
+int sit(float po, int semente){ //preenchimento da matriz de sitios
+
+       // std::random_device rd;
+       srand((unsigned)semente-time(NULL));
+        std::mt19937 mt(semente*rand());
+        std::uniform_real_distribution<float> dist(0,1);
+
+
+    for(j=0;j<=Lj;j++){ //preenchimento da matriz de sitios
+        for(i=0;i<=Li;i++){
+            if(i==0 || j==0){
+                cluster[i][j]=0;
+            }
+                else{
+            if(dist(mt)<po){
+                cluster[i][j]=1;
+            }
+            else{
+                cluster[i][j]=0;
+            }
+                }
+        }
+    }
+
+    /*srand((unsigned)semente-time(NULL)); //inicialização da geração de numeros aleatórios
+
+    //calculo do numero aleatorio
+    denominador=RAND_MAX;
+    for(j=0;j<=Lj;j++){ //preenchimento da matriz de sitios
+        for(i=0;i<=Li;i++){
+            if(i==0 || j==0){
+                cluster[i][j]=0;
+            }
+                else{
+            numerador=rand();
+            ran=numerador/denominador;
+            if(ran<po){
+                cluster[i][j]=1;
+            }
+            else{
+                cluster[i][j]=0;
+            }
+                }
+        }
+    }*/
+
+}
+//*********************************************************************************
+int inicia_cluster(void) { //inicializa a rotulagem dos clusters
+  n[0]++;
+  n[n[0]] = n[0];
+  return n[0];
+}
+//*********************************************************************************
+int encontrar(int x) { //faz a busca de sitios vizinhos ocupados
+  int y = x;
+  while (n[y] != y)
+    y = n[y];
+
+  /**while (n[x] != x) {
+    int z = n[x];
+    n[x] = y;
+    x = z;
+  } */
+  return y;
+}
+//*********************************************************************************
+int unir(int x, int y) { //une dois clusters de rótulos diferentes
+  return n[encontrar(x)] = encontrar(y);
+}
+//*********************************************************************************
+void atualizar_rotulos(){
+    for(j=1;j<=Lj;j++){
+        for(i=1;i<=Li;i++){
+            if(cluster[i][j]!=0){
+                cluster[i][j]=n[encontrar(cluster[i][j])];
+            }
+        }
+    }
+}
+//*********************************************************************************
+int preencher_cluster(){ //Hoshen-Kopelman
+
+    for (i=0;i<=ivv;i++){
+        n[i]=0;
+    }
+    //cout<<"matriz de clusters"<<'\n'<<'\n';
+    //preenchimento da matríz de clusters
+    for(j=1;j<=Lj;j++){
+        for(i=1;i<=Li;i++){
+            if(cluster[i][j]==1){
+                    esquerda_sit             =cluster[i-1][j];
+                    acima_sit                =cluster[i][j-1];
+                    esquerda                 =cluster[i-1][j];
+                    acima                    =cluster[i][j-1];
+                if(esquerda_sit==0 && acima_sit==0){
+                    cluster[i][j]=inicia_cluster();
+                    n[cluster[i][j]]=cluster[i][j];
+                    goto linha;
+                }
+                if(esquerda_sit!=0 && acima_sit==0){
+                    cluster[i][j]         =encontrar(max(acima,esquerda));
+                    n[cluster[i][j]]=cluster[i][j];
+                    goto linha;
+                }
+                if(esquerda_sit==0 && acima_sit!=0){
+                    cluster[i][j]         =encontrar(max(acima,esquerda));
+                    n[cluster[i][j]]=cluster[i][j];
+                    goto linha;
+                }
+                if(esquerda_sit!=0 && acima_sit!=0){
+
+                    //cluster[i][j] = unir(acima, esquerda);
+                    cluster[i][j] = encontrar(min(acima, esquerda));
+                    n[cluster[i][j]]=cluster[i][j];
+                    n[cluster[i-1][j]]=cluster[i][j];
+                    n[cluster[i][j-1]]=cluster[i][j];
+                    goto linha;
+                }
+            }
+            linha:;
+        }
+    }
+    atualizar_rotulos();
+}
+//*********************************************************************************
+int contagem(){ //verifica a porosidade da rede
+    double porosidade=0;
+
+    for (j=1;j<=Lj;j++){
+        for(i=1;i<=Li;i++){
+            if(cluster[i][j]!=0){
+                porosidade++;
+            }
+        }
+    }
+    cout<<"porosidade \t"<<porosidade/(ivv)<<'\n';
+}
+//*********************************************************************************
+int exibe_cluster(){ //exibe a rede de clusters
+    for(j=1;j<=Lj;j++){
+        for(i=1;i<=Li;i++){
+            cout<<cluster[i][j]<<'\t';
+        }
+        cout<<'\n';
+    }
+}
+//*********************************************************************************
+int exibe_rotulos(){ //exibe os rótulos e o valor de cada um
+
+    for(i=1;i<=n[0];i++){
+        if(n[i]!=0){
+            cout<<"n["<<i<<"] = "<<n[i]<<'\n';
+            cout<<'\n';
+        }
+    }
+}
+//*********************************************************************************
+int verifica_percolacao(){ //verifica se há percolação na vertical
+int test;
+    for(j=1;j<=Lj;j++){
+        for(i=1;i<=Li;i++){
+            if(cluster[j][1]!=0){
+                test=cluster[1][j];
+                if(cluster[1][j] == cluster[Li][i]){
+                iperc++;
+                goto linha;
+                }
+            }
+        }
+    }
+    linha:;
+    //cout<<"percolacao \t"<<iperc<<'\n';
+}
+//*********************************************************************************
+int arquivo(){
+
+    ofstream outf1("linha_100.txt");
+
+    if(!outf1){
+        cout<<"o arquivo não foi gerado";
+    }
+    k=1;
+    //for(L=L_min;L<=L_max;L=L+L_min){
+        outf1<<'\t'<<"L= "<<L<<'\n';
+        p=pi;
+        for(ip=1;ip<=ip_max;ip++){
+            outf1<<p<<'\t'<<perc[k][ip]<<'\n';
+            p=p+p_incremento;
+        }
+        k++;
+   //}
+}
+
+//*********************************************************************************
+int main(){
+    k=1;
+    ofstream outf1("linha_100_1.txt");
+    //for(L=L_min;L<=L_max;L=L+L_min){
+        Li=L; Lj=L;
+       p=pi;
+       cout<<"L= "<<L<<'\n';
+        for(ip=1;ip<=ip_max;ip++){
+                cout<<ip<<'\t';
+            iperc=0;
+            for (cont_it=1;cont_it<=iteracoes;cont_it++){
+
+                sit(p,cont_it); //contrói, zera e preenche a matriz de sitios
+                //contagem(); //verifica a porosidade da rede
+                preencher_cluster();/**EXECUTA O ALGORÍTMO DE HOSHEN-KOPELMAN: faz o preenchimento da matriz de clusters e chama a subrotina de atuaização de rotulos*/
+                //exibe_rotulos();
+                verifica_percolacao();
+                //cout<<dimensao<<'\t'<<p<<'\n';
+                //exibe_cluster();
+            }
+            cout<<iperc<<'\t';
+            perc[k][ip]=iperc/iteracoes;
+            outf1<<p<<'\t'<<perc[k][ip]<<'\n';
+            p=p+p_incremento;
+        }
+    k++;
+   // }
+    cout<<"finalizado"<<'\t';
+    arquivo();
+}
